@@ -142,3 +142,5 @@ vite.config.ts.timestamp-*
 
 ## envrc
 .envrc
+credentials.json
+service-account.json
