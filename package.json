@@ -1,0 +1,13 @@
+{
+  "name": "hr-line-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:ryouhei0622/hr-line-bot.git",
+  "author": "ryouhei0622 <seijakunomutou@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@line/bot-sdk": "^10.3.0",
+    "@ngrok/ngrok": "^1.5.2",
+    "express": "^5.1.0"
+  }
+}
