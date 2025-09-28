@@ -38,7 +38,7 @@ function sendQuestion(replyToken, client) {
             contents: [
               {
                 type: "image",
-                url: "https://raw.githubusercontent.com/ryouhei0622/houhan-kun/main/assets/images/tokyo.png",
+                url: "https://raw.githubusercontent.com/ryouhei0622/hr-line-bot/main/assets/images/tokyo.png",
                 size: "full",
                 aspectMode: "cover",
                 aspectRatio: "2:3",
@@ -103,7 +103,7 @@ function sendQuestion(replyToken, client) {
             contents: [
               {
                 type: "image",
-                url: "https://raw.githubusercontent.com/ryouhei0622/houhan-kun/main/assets/images/kanagawa.png",
+                url: "https://raw.githubusercontent.com/ryouhei0622/hr-line-bot/main/assets/images/kanagawa.png",
                 size: "full",
                 aspectMode: "cover",
                 aspectRatio: "2:3",
