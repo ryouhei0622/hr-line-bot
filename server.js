@@ -6,6 +6,7 @@ import { callback } from "./handlers.js";
 const PORT = process.env.PORT || 3000;
 const app = express();
 
+// webhook endpoint
 app.post("/webhook", middleware(lineConfig), async (req, res) => {
   try {
     await Promise.all(req.body.events.map(event => callback(event, client)));

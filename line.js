@@ -1,12 +1,9 @@
-import { MessagingApiClient } from "@line/bot-sdk";
+// line.js
+import { Client } from "@line/bot-sdk";
 
-const client = new MessagingApiClient({
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || "",
+export const lineConfig = {
   channelSecret: process.env.LINE_CHANNEL_SECRET,
-});
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
+};
 
-// メッセージ送信
-await client.replyMessage({
-  replyToken: event.replyToken,
-  messages: [{ type: "text", text: "Hello from MessagingApiClient" }]
-});
+export const client = new Client(lineConfig);
