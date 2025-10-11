@@ -1,8 +1,20 @@
-import { updateAnswer} from "./sheets.js";
+import { updateAnswer } from "./sheets.js";
+
+// 質問リストを定義（順番に送る）
+const QUESTIONS = [
+  "Q1．まずは、現在のお仕事のご状況を以下よりお選びください！（残り4問）",
+  "Q2．これまでのご経験で、一番近い職種を以下よりお選びください！（残り3問）",
+  "Q3．ご希望の勤務地は、どのあたりをお考えですか？（残り2問）",
+  "Q4．現在の年収に近いものを以下よりお選びください！（残り1問）",
+  "Q5．最後に、転職にあたり希望するスタンスをお選びください！",
+];
+
 
 export async function callback(event, client) {
   if (event.type === "follow") {
-    return sendQuestion(event.replyToken, client, 1);
+    // ✅ 初回フォロー時 → Q1送信
+    await sendQuestion(event.replyToken, client, 1);
+    return;
   }
 
   if (event.type === "postback") {
@@ -11,25 +23,40 @@ export async function callback(event, client) {
     const [answer, questionNumberStr] = postbackData.split(":");
     const questionNumber = parseInt(questionNumberStr, 10);
 
-    // ✅ 回答をスプレッドシートに横展開で記録
+    // ✅ スプレッドシートに横展開で記録
     await updateAnswer(userId, questionNumber, answer);
 
+    // ✅ 選択結果を返信
+    await client.pushMessage(userId, [
+      { type: "text", text: `> あなたの選択: ${answer}` },
+    ]);
+
     // ✅ 次の質問があれば送信、それ以降は終了メッセージ
-    if (questionNumber < 5) {
+    if (questionNumber < QUESTIONS.length) {
       await sendQuestion(null, client, questionNumber + 1, userId);
     } else {
       await client.pushMessage(userId, [
-        { type: "text", text: "✅ すべてのアンケートが完了しました。ご協力ありがとうございました！" },
+        {
+          type: "text",
+          text: "✅ すべてのアンケートが完了しました。ご協力ありがとうございました！",
+        },
       ]);
     }
   }
+
   return null;
 }
 
 /**
- * 既存の質問送信ロジック
+ * 質問文＋Flex送信（replyTokenがある場合はreply、ない場合はpush）
  */
-function sendQuestion(replyToken, client, number = 1, userId = null) {
+async function sendQuestion(replyToken, client, number = 1, userId = null) {
+  const questionText = QUESTIONS[number - 1];
+
+  // ① 質問文メッセージ
+  const questionMessage = { type: "text", text: questionText };
+
+  // ② Flexメッセージ（画像付き）
   const flexMessage = {
     type: "flex",
     altText: `アンケート${number}`,
@@ -50,13 +77,17 @@ function sendQuestion(replyToken, client, number = 1, userId = null) {
     },
   };
 
+  // ✅ 最初の1問目は replyMessage、それ以降は pushMessage
   if (replyToken) {
-    return client.replyMessage(replyToken, [flexMessage]);
+    return client.replyMessage(replyToken, [questionMessage, flexMessage]);
   } else if (userId) {
-    return client.pushMessage(userId, [flexMessage]);
+    return client.pushMessage(userId, [questionMessage, flexMessage]);
   }
 }
 
+/**
+ * 画像付きバブル生成
+ */
 function createRegionBubble(imageUrl, postbackData, titleText) {
   return {
     type: "bubble",
