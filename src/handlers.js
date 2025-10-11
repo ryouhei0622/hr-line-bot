@@ -1,25 +1,20 @@
-import { updateRegion, getUserIdsByRegion } from "./sheets.js";
+import { updateAnswer} from "./sheets.js";
 
 export async function callback(event, client) {
   if (event.type === "follow") {
-    // 初回フォロー時 → Q1送信
     return sendQuestion(event.replyToken, client, 1);
   }
 
   if (event.type === "postback") {
     const postbackData = event.postback.data;
     const userId = event.source.userId;
-
-    // postbackDataの例: "tokyo:1" → (回答:tokyo, 質問番号:1)
-    const [region, questionNumberStr] = postbackData.split(":");
+    const [answer, questionNumberStr] = postbackData.split(":");
     const questionNumber = parseInt(questionNumberStr, 10);
 
-    // 回答をスプレッドシートに記録
-    if (["tokyo", "kanagawa"].includes(region)) {
-      await updateRegion(userId, region);
-    }
+    // ✅ 回答をスプレッドシートに横展開で記録
+    await updateAnswer(userId, questionNumber, answer);
 
-    // 次の質問があれば送信、それ以降は終了メッセージ
+    // ✅ 次の質問があれば送信、それ以降は終了メッセージ
     if (questionNumber < 5) {
       await sendQuestion(null, client, questionNumber + 1, userId);
     } else {
@@ -27,15 +22,12 @@ export async function callback(event, client) {
         { type: "text", text: "✅ すべてのアンケートが完了しました。ご協力ありがとうございました！" },
       ]);
     }
-
-    return;
   }
-
   return null;
 }
 
 /**
- * 画像付きFlex送信（replyTokenがある場合はreply、ない場合はpush）
+ * 既存の質問送信ロジック
  */
 function sendQuestion(replyToken, client, number = 1, userId = null) {
   const flexMessage = {
@@ -59,17 +51,12 @@ function sendQuestion(replyToken, client, number = 1, userId = null) {
   };
 
   if (replyToken) {
-    // 初回フォロー時
     return client.replyMessage(replyToken, [flexMessage]);
   } else if (userId) {
-    // 回答後の次の質問
     return client.pushMessage(userId, [flexMessage]);
   }
 }
 
-/**
- * 画像付きバブル生成関数
- */
 function createRegionBubble(imageUrl, postbackData, titleText) {
   return {
     type: "bubble",
@@ -121,7 +108,7 @@ function createRegionBubble(imageUrl, postbackData, titleText) {
               action: {
                 type: "postback",
                 label: "action",
-                data: postbackData, // ✅ "tokyo:1" のように質問番号付き
+                data: postbackData, // "tokyo:1"
               },
             },
           ],
@@ -136,24 +123,4 @@ function createRegionBubble(imageUrl, postbackData, titleText) {
       paddingAll: "0px",
     },
   };
-}
-
-/**
- * 地域別ターゲティング（任意）
- */
-async function targetingRegionMessage(client) {
-  const userIds = await getUserIdsByRegion("tokyo");
-
-  const flexMessage = {
-    type: "flex",
-    altText: "tokyoの方限定！",
-    contents: {
-      type: "carousel",
-      contents: [],
-    },
-  };
-
-  if (userIds.length > 0) {
-    return client.multicast(userIds, [flexMessage]);
-  }
 }

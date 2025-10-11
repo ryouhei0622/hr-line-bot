@@ -4,7 +4,6 @@ const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 const spreadsheetId = process.env.SPREAD_SHEET_ID;
 const sheetName = process.env.SHEET_NAME || "シート1";
 
-// Google 認証
 const auth = new google.auth.GoogleAuth({
   keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
   scopes: SCOPES,
@@ -12,45 +11,56 @@ const auth = new google.auth.GoogleAuth({
 
 const sheets = google.sheets({ version: "v4", auth });
 
-export async function appendRow(values) {
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: `${sheetName}!A:B`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [values] },
-  });
-}
-
-export async function findUserRow(userId) {
+/**
+ * 指定した値を行末または既存行の右隣に追加
+ * userId が存在しない → 新規行
+ * userId が存在する → 指定列に書き込み
+ */
+export async function updateAnswer(userId, questionNumber, answerValue) {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${sheetName}!A:B`,
+    range: `${sheetName}!A:Z`, // 最大26列まで対応
   });
-  const rows = res.data.values || [];
-  const idx = rows.findIndex(r => r[0] === userId);
-  return { rows, idx };
-}
 
-export async function updateRegion(userId, region) {
-  const { rows, idx } = await findUserRow(userId);
-  if (idx === -1) {
-    await appendRow([userId, region]);
-  } else {
-    const rowNumber = idx + 1;
-    await sheets.spreadsheets.values.update({
+  const rows = res.data.values || [];
+  let rowIndex = rows.findIndex(r => r[0] === userId);
+
+  // 行が存在しない → 新規追加
+  if (rowIndex === -1) {
+    const newRow = [userId];
+    // questionNumberに応じて列位置をずらす
+    for (let i = 1; i < questionNumber; i++) newRow.push("");
+    newRow.push(answerValue);
+    await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${sheetName}!B${rowNumber}`,
+      range: `${sheetName}!A:Z`,
       valueInputOption: "USER_ENTERED",
-      requestBody: { values: [[region]] },
+      requestBody: { values: [newRow] },
     });
+    return;
   }
+
+  // 行が存在する場合 → 列を指定して上書き
+  const rowNumber = rowIndex + 1;
+  const columnLetter = getColumnLetter(questionNumber + 1); // A=1, B=2…
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${sheetName}!${columnLetter}${rowNumber}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[answerValue]] },
+  });
 }
 
-export async function getUserIdsByRegion(region) {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: `${sheetName}!A:B`,
-  });
-  const rows = res.data.values || [];
-  return rows.filter(r => r[1] === region).map(r => r[0]);
+/**
+ * 列番号をアルファベットに変換
+ * 例: 1→A, 2→B, 3→C
+ */
+function getColumnLetter(num) {
+  let s = "";
+  while (num > 0) {
+    const mod = (num - 1) % 26;
+    s = String.fromCharCode(65 + mod) + s;
+    num = Math.floor((num - mod) / 26);
+  }
+  return s;
 }
